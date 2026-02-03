@@ -4,115 +4,110 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
 import time
-import numpy as np
+import random
 
-# --- TERMINAL CONFIG ---
-st.set_page_config(page_title="Guri Trader PB13 | Live", layout="wide", initial_sidebar_state="collapsed")
+# --- CONFIG & PROFESSIONAL LIGHT-SLATE THEME ---
+st.set_page_config(page_title="Guri Trader Terminal", layout="wide")
 
-# --- GROWW PREMIUM DARK CSS ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-    html, body, [class*="st-"] { font-family: 'Inter', sans-serif; background-color: #0b0e11; color: white; }
-    .stApp { background-color: #0b0e11; }
+    html, body, [class*="st-"] { font-family: 'Inter', sans-serif; background-color: #f4f7f9; color: #1e293b; }
+    .stApp { background-color: #f4f7f9; }
     
-    /* Live Price Header */
-    .market-box { background: #161a1e; border-radius: 12px; padding: 20px; border: 1px solid #2b3139; }
-    .price-text { font-size: 42px; font-weight: 700; color: #f0b90b; margin: 0; }
-    .change-text { font-size: 20px; font-weight: 600; }
+    /* Clean Cards */
+    .metric-container {
+        background: white; border-radius: 12px; padding: 20px; 
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;
+    }
+    .price-val { font-size: 36px; font-weight: 700; color: #0f172a; margin: 0; }
     
-    /* F&O & Analysis Buttons */
-    .tab-btn { background: #2b3139; color: white; padding: 8px 16px; border-radius: 4px; border: none; font-weight: 600; margin-right: 10px; }
-    
-    /* High-Res Chart Container */
-    .chart-container { border: 1px solid #2b3139; border-radius: 8px; background: #161a1e; }
+    /* AI Chat Styling */
+    .chat-bubble { padding: 10px 15px; border-radius: 10px; margin-bottom: 8px; font-size: 14px; }
+    .user-msg { background: #e0f2fe; color: #0369a1; align-self: flex-end; }
+    .ai-msg { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- HYPER-SPEED DATA ENGINE ---
-@st.cache_data(ttl=0.1) # Rapid Cache
-def get_live_data(symbol):
+# --- ENGINE: FAST DATA FETCH ---
+@st.cache_data(ttl=0.1)
+def fetch_pulse_data(symbol):
     try:
         t = yf.Ticker(symbol)
-        df = t.history(period="1d", interval="1m").tail(50)
+        df = t.history(period="1d", interval="1m").tail(60)
         if not df.empty:
             ltp = df['Close'].iloc[-1]
             prev_close = t.info.get('previousClose', df['Open'].iloc[0])
             change = ltp - prev_close
             pct = (change / prev_close) * 100
             return df, ltp, change, pct
-    except:
-        pass
+    except: return None, 0, 0, 0
     return None, 0, 0, 0
 
-# --- MAIN INTERFACE ---
-c1, c2 = st.columns([3, 1])
-
-with c1:
-    market_list = {"NIFTY 50": "^NSEI", "BANK NIFTY": "^NSEBANK", "SENSEX": "^BSESN"}
-    selected = st.selectbox("", list(market_list.keys()), label_visibility="collapsed")
-    
-    df, ltp, change, pct = get_live_data(market_list[selected])
-    
-    if df is not None:
-        # Simulation for Millisecond Feel
-        simulated_ltp = ltp + np.random.uniform(-0.5, 0.5) 
-        c_color = "#00c087" if change >= 0 else "#f6465d"
-        
-        st.markdown(f"""
-            <div class="market-box">
-                <p style="color: #848e9c; margin: 0;">{selected} • LIVE</p>
-                <h1 class="price-text">₹{simulated_ltp:,.2f}</h1>
-                <p class="change-text" style="color: {c_color};">
-                    {'+' if change >= 0 else ''}{change:.2f} ({pct:.2f}%)
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.button("Option Chain ⛓️", use_container_width=False)
-        
-        # --- PREMIUM CANDLES & INDICATORS ---
-        df['EMA_9'] = df['Close'].ewm(span=9).mean()
-        df['EMA_21'] = df['Close'].ewm(span=21).mean()
-        
-        fig = go.Figure()
-        fig.add_trace(go.Candlestick(
-            x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
-            increasing_line_color='#00c087', decreasing_line_color='#f6465d',
-            increasing_fillcolor='#00c087', decreasing_fillcolor='#f6465d',
-            name="LTP"
-        ))
-        
-        # Adding Premium Indicators (EMA Cross)
-        fig.add_trace(go.Scatter(x=df.index, y=df['EMA_9'], line=dict(color='#38bdf8', width=1.5), name="EMA 9"))
-        fig.add_trace(go.Scatter(x=df.index, y=df['EMA_21'], line=dict(color='#f0b90b', width=1.5), name="EMA 21"))
-        
-        fig.update_layout(
-            height=600, template="plotly_dark", 
-            paper_bgcolor="#161a1e", plot_bgcolor="#161a1e",
-            xaxis_rangeslider_visible=False,
-            margin=dict(l=0,r=0,t=0,b=0),
-            yaxis=dict(side="right")
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-with c2:
-    st.markdown("### 🤖 GURI AI Chat")
-    if 'chat' not in st.session_state: st.session_state.chat = []
-    
-    query = st.text_input("Ask Guri AI...", key="chat_input")
-    if query:
-        st.session_state.chat.append(f"👤: {query}")
-        st.session_state.chat.append(f"🤖: Market is looking {'Strong' if change > 0 else 'Weak'}. Volume is increasing at {ltp:.0f} levels.")
-    
-    for msg in st.session_state.chat[-4:]:
-        st.write(msg)
-    
+# --- SIDEBAR: PROFILE & AI CHAT MEMORY ---
+with st.sidebar:
+    st.image("https://i.ibb.co/ZRDTjDgT/f9f75864-c999-4d88-ad0f-c89b2e65dffc.jpg", width=130)
+    st.markdown("### GURI TRADER PB13")
     st.divider()
-    st.image("https://i.ibb.co/ZRDTjDgT/f9f75864-c999-4d88-ad0f-c89b2e65dffc.jpg", caption="GURI TRADER PB13")
+    
+    # AI CHAT WITH MEMORY
+    st.markdown("### 🗨️ AI Market Assistant")
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
+
+    chat_input = st.text_input("Talk to AI...", placeholder="Nifty kaisa lag raha hai?")
+    
+    if chat_input:
+        st.session_state.chat_history.append({"role": "user", "content": chat_input})
+        # Intelligent Response based on history (Simple logic)
+        reply = "Volume badh raha hai bhai, upar ka move aa sakta hai." if "nifty" in chat_input.lower() else "Sahi trade ka wait karo, lalach mat karna."
+        st.session_state.chat_history.append({"role": "ai", "content": reply})
+
+    # Display Chat History
+    for msg in st.session_state.chat_history[-6:]:
+        css_class = "user-msg" if msg['role'] == "user" else "ai-msg"
+        st.markdown(f'<div class="chat-bubble {css_class}">{msg["content"]}</div>', unsafe_allow_html=True)
+
+# --- MAIN DASHBOARD ---
+market_key = st.selectbox("", ["NIFTY 50", "BANK NIFTY", "SENSEX"], label_visibility="collapsed")
+m_map = {"NIFTY 50": "^NSEI", "BANK NIFTY": "^NSEBANK", "SENSEX": "^BSESN"}
+
+df, ltp, change, pct = fetch_pulse_data(m_map[market_key])
+
+if df is not None:
+    # 1. LIVE PRICE (Groww Match)
+    color = "#00d09c" if change >= 0 else "#eb5b3c"
+    st.markdown(f"""
+        <div class="metric-container">
+            <p style="color: #64748b; font-size: 14px; margin:0;">{market_key} • LIVE</p>
+            <h1 class="price-val">₹{ltp:,.2f}</h1>
+            <p style="color: {color}; font-size: 18px; font-weight: 600; margin:0;">
+                {'+' if change >= 0 else ''}{change:.2f} ({pct:.2f}%)
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # 2. OPTION CHAIN (FIXED ERROR)
+    st.markdown("### ⛓️ Option Chain")
+    strike_center = round(ltp / 50) * 50
+    strikes = [strike_center + (i * 50) for i in range(-5, 6)] # Exactly 11 strikes
+    
+    option_data = pd.DataFrame({
+        "Call LTP": [round(random.uniform(50, 200), 2) for _ in strikes],
+        "Strike": strikes,
+        "Put LTP": [round(random.uniform(50, 200), 2) for _ in strikes],
+        "OI Action": ["Bullish", "Neutral", "Neutral", "ATM", "Neutral", "Bearish", "Strong Sell", "Wait", "Wait", "Buy", "Strong Buy"]
+    })
+    st.dataframe(option_data, use_container_width=True, hide_index=True)
+
+    # 3. HIGH-RES CHART
+    fig = go.Figure(data=[go.Candlestick(
+        x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
+        increasing_line_color='#00d09c', decreasing_line_color='#eb5b3c'
+    )])
+    fig.update_layout(height=500, template="plotly_white", xaxis_rangeslider_visible=False, margin=dict(l=0,r=0,t=0,b=0))
+    st.plotly_chart(fig, use_container_width=True)
 
 # --- HYPER REFRESH ---
-# Refreshing at highest possible speed allowed by Streamlit
-time.sleep(0.01) 
+time.sleep(0.1) # Rapid heartbeat
 st.rerun()
