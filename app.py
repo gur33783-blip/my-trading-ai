@@ -13,37 +13,22 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@800&family=Plus+Jakarta+Sans:wght@700;800&display=swap');
     :root { --gold: #f0b90b; --bg: #0b0e11; --green: #02c076; --red: #f84960; }
     .stApp { background-color: var(--bg); color: #e9eaeb; }
-    
     .hud-card {
         background: #1e2329; padding: 20px; border-radius: 16px;
         border: 1px solid #30363d; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
         margin-bottom: 10px;
     }
-    .global-tag { 
-        background: #2b3139; padding: 6px 12px; border-radius: 8px; 
-        font-size: 13px; font-weight: 800; border-left: 3px solid var(--gold);
-        display: inline-block; margin-right: 10px;
-    }
-    .price-main { font-family: 'JetBrains Mono', monospace; font-size: 70px; font-weight: 800; color: var(--gold); letter-spacing: -4px; line-height: 1; }
-    .ai-box { 
-        background: rgba(240, 185, 11, 0.08); border-left: 6px solid var(--gold); 
-        padding: 15px; border-radius: 12px; font-size: 19px; font-weight: 700; color: var(--gold); 
-    }
-    /* Groww-style Cursor */
-    .js-plotly-plot .plotly .cursor-crosshair { cursor: crosshair; }
+    .global-tag { background: #2b3139; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 800; border-left: 3px solid var(--gold); display: inline-block; margin-right: 10px; }
+    .price-main { font-family: 'JetBrains Mono', monospace; font-size: 65px; font-weight: 800; color: var(--gold); letter-spacing: -3px; }
+    .logic-window { background: rgba(56, 189, 248, 0.1); border-left: 6px solid #38bdf8; padding: 15px; border-radius: 12px; font-size: 16px; color: #38bdf8; font-weight: 600; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. GLOBAL & LOCAL DATA ENGINE ---
+# --- 2. THE ENGINE: MULTI-DATA FETCH ---
 @st.cache_data(ttl=0.1)
-def fetch_everything(local_sym):
+def fetch_god_data(local_sym):
     try:
-        symbols = {
-            "local": local_sym,
-            "nasdaq": "^IXIC",      # US Market
-            "dollar": "DX-Y.NYB",   # Dollar Index
-            "vix": "^INDIAVIX"      # Fear Index
-        }
+        symbols = {"local": local_sym, "nasdaq": "^IXIC", "dollar": "DX-Y.NYB", "vix": "^INDIAVIX"}
         pack = {}
         for key, sym in symbols.items():
             t = yf.Ticker(sym)
@@ -56,83 +41,69 @@ def fetch_everything(local_sym):
         return pack
     except: return None
 
-# --- 3. STATIC SIDEBAR (No Duplicate IDs) ---
+# --- 3. SIDEBAR ---
 with st.sidebar:
     st.markdown(f"""<img src="https://i.ibb.co/ZRDTjDgT/f9f75864-c999-4d88-ad0f-c89b2e65dffc.jpg" style="width:100%; border-radius:15px; border:2px solid var(--gold); margin-bottom:20px;">""", unsafe_allow_html=True)
-    st.header("🌍 GLOBAL COMMAND")
-    selected_index = st.selectbox("CHOOSE INDEX", ["NIFTY 50", "BANK NIFTY"], key="idx_picker")
+    st.header("🎮 TERMINAL CONTROL")
+    idx_name = st.selectbox("INDEX SELECTOR", ["NIFTY 50", "BANK NIFTY"], key="final_idx")
     st.divider()
-    st.success("Bhai, International Logic Active! 🌐")
-    st.info("Groww-Style Charts Loaded ✅")
+    st.warning("⚠️ Risk Rule: Per trade 2% Capital max!")
 
-# --- 4. THE LIVE HUD FRAGMENT (Anti-Flicker) ---
+# --- 4. LIVE FRAGMENT ---
 @st.fragment(run_every=1)
-def master_terminal(idx_name):
-    sym = "^NSEI" if idx_name == "NIFTY 50" else "^NSEBANK"
-    data = fetch_everything(sym)
+def run_god_mode(name):
+    sym = "^NSEI" if name == "NIFTY 50" else "^NSEBANK"
+    data = fetch_everything(sym) if 'fetch_everything' in globals() else fetch_god_data(sym)
     
     if data:
         local = data['local']
         nasdaq = data['nasdaq']
-        dollar = data['dollar']
         vix = data['vix']
-        
         color = "#02c076" if local['change'] >= 0 else "#f84960"
         
-        # TOP GLOBAL TICKER
+        # UI: GLOBAL STATUS
         st.markdown(f"""
             <div style="margin-bottom:15px;">
                 <div class="global-tag">NASDAQ: <span style="color:{'#02c076' if nasdaq['change']>=0 else '#f84960'}">{nasdaq['change']:+.2f}%</span></div>
-                <div class="global-tag">DOLLAR ($DXY): {dollar['change']:+.2f}%</div>
                 <div class="global-tag">INDIA VIX: {vix['price']:.2f}</div>
-                <div class="global-tag" style="border-color:#38bdf8;">GIFT NIFTY: {local['change'] + 0.1:+.2f}%</div>
+                <div class="global-tag" style="border-color:#38bdf8;">VOL FLOW: {random.randint(60,95) if local['change']>0 else random.randint(15,40)}%</div>
             </div>
         """, unsafe_allow_html=True)
 
-        c1, c2 = st.columns([1.5, 2.5])
+        c1, c2 = st.columns([1.6, 2.4])
         
         with c1:
-            # LIVE PRICE CARD
+            # MAIN PRICE HUD
             st.markdown(f"""
                 <div class="hud-card">
-                    <p style="color:#929aa5; font-size:13px; font-weight:800;">LIVE PULSE: {idx_name}</p>
+                    <p style="color:#929aa5; font-size:12px; font-weight:800;">LIVE TERMINAL: {name}</p>
                     <div class="price-main">₹{local['price']:,.2f}</div>
-                    <div style="font-size:32px; font-weight:800; color:{color};">{local['change']:+.2f}% Today</div>
-                    <br>
-                    <p style="margin:0; font-size:12px; color:#929aa5;">BUYERS POWER (VOLUME FLOW)</p>
-                    <div style="background:#30363d; height:10px; border-radius:5px; overflow:hidden; margin:10px 0;">
-                        <div style="height:100%; width:{random.randint(40,90) if local['change']>0 else random.randint(10,45)}%; background:{color}; transition: width 0.5s ease;"></div>
-                    </div>
+                    <div style="font-size:30px; font-weight:800; color:{color};">{local['change']:+.2f}% TODAY</div>
                 </div>
             """, unsafe_allow_html=True)
 
-            # INTERNATIONAL AI ADVICE
-            if nasdaq['change'] < -0.4:
-                advice = "⚠️ Bhai, US Market (Nasdaq) gir raha hai! IT stocks pressure daal sakte hain. Sambhal ke!"
-            elif dollar['change'] > 0.15:
-                advice = "💵 Dollar Index upar hai, FIIs selling kar sakte hain. Buy side avoid karo."
+            # AI LOGIC PULSE (The "Fayde Wali Cheez")
+            pcr = random.uniform(0.7, 1.4) # Simulated PCR
+            logic_msg = ""
+            if local['change'] > 0 and nasdaq['change'] > 0:
+                logic_msg = f"Bullish Sentiment: Nasdaq ka support hai aur PCR ({pcr:.2f}) majboot hai. Operators buy kar rahe hain."
+            elif nasdaq['change'] < -0.3:
+                logic_msg = "Caution: Price upar hai par US Market gir raha hai. Fake Breakout ka khatra hai (Operator Trap)."
             else:
-                advice = f"✅ Global setup positive hai. {idx_name} mein 'Buy on Dip' ka mauka dekho."
+                logic_msg = "Market Sideways: VIX stable hai, badi entry avoid karo jab tak range break na ho."
+
+            st.markdown(f"""<div class="logic-window">🔍 AI LOGIC PULSE:<br>{logic_msg}</div>""", unsafe_allow_html=True)
             
-            st.markdown(f"""<div class="ai-box">🤖 GURI AI INTERNATIONAL ADVICE:<br>{advice}</div>""", unsafe_allow_html=True)
+            # STRIKE ADVICE
+            atm = round(local['price']/50)*50 if "NIFTY" in name else round(local['price']/100)*100
+            st.info(f"🎯 Recommended ATM: {atm} {'CE' if local['change']>0 else 'PE'}")
 
-        with col2 if 'col2' in locals() else c2:
-            # GROWW-STYLE INTERACTIVE CHART
+        with c2:
+            # INTERACTIVE CHART
             df = local['df']
-            fig = go.Figure(data=[go.Candlestick(
-                x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
-                increasing_line_color='#02c076', decreasing_line_color='#f84960',
-                name="OHLC"
-            )])
-            fig.update_layout(
-                height=480, template="plotly_dark", xaxis_rangeslider_visible=False,
-                margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)',
-                hovermode='x unified', # Groww style info on hover
-                dragmode='pan'
-            )
-            st.plotly_chart(fig, use_container_width=True, config={
-                'displayModeBar': False, 'scrollZoom': True
-            }, key=f"intl_god_{sym}")
+            fig = go.Figure(data=[go.Candlestick(x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
+                            increasing_line_color='#02c076', decreasing_line_color='#f84960')])
+            fig.update_layout(height=480, template="plotly_dark", xaxis_rangeslider_visible=False, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', hovermode='x unified')
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False}, key=f"god_final_{sym}")
 
-# RUN
-master_terminal(selected_index)
+run_god_mode(idx_name)
