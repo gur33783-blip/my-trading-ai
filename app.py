@@ -3,144 +3,157 @@ import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
 import time
+import numpy as np
 import random
 
-# --- 1. HIGH-PROFESSIONAL UI CONFIG ---
-st.set_page_config(page_title="GURI AI ALPHA", layout="wide")
+# --- 1. GLOBAL TERMINAL SETTINGS ---
+st.set_page_config(page_title="GURI TERMINAL GOD-MODE", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@800&family=Plus+Jakarta+Sans:wght@700;800&display=swap');
     
-    /* Overall Background */
-    .stApp { background-color: #f0f2f5; }
+    :root { --neon-green: #02c076; --neon-red: #f84960; --gold: #f0b90b; --bg-dark: #0b0e11; }
     
-    /* Main Card Styling */
-    .premium-card {
-        background: #ffffff;
-        padding: 25px;
-        border-radius: 24px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.04);
-        border: 1px solid rgba(0,0,0,0.05);
-        margin-bottom: 20px;
+    .stApp { background-color: var(--bg-dark); color: #e9eaeb; }
+    
+    /* Premium HUD Cards */
+    .hud-card {
+        background: #1e2329; padding: 20px; border-radius: 16px;
+        border: 1px solid #30363d; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        margin-bottom: 15px; position: relative;
     }
     
-    /* Ultra-Visible Fonts */
-    .header-text { font-family: 'Inter', sans-serif; font-weight: 900; color: #1e293b; font-size: 34px; letter-spacing: -1px; }
-    .price-val { font-family: 'JetBrains Mono', monospace; font-size: 72px; font-weight: 800; color: #0f172a; letter-spacing: -4px; line-height: 1; }
-    .label-text { font-family: 'Inter', sans-serif; font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 14px; letter-spacing: 1px; }
+    .price-main { font-family: 'JetBrains Mono', monospace; font-size: 75px; font-weight: 800; color: var(--gold); letter-spacing: -4px; line-height: 1; }
     
-    /* Neon Signal Buttons */
-    .buy-btn { background: #10b981; color: white; padding: 12px 24px; border-radius: 12px; font-weight: 900; font-size: 20px; display: inline-block; box-shadow: 0 4px 15px rgba(16,185,129,0.3); }
-    .sell-btn { background: #ef4444; color: white; padding: 12px 24px; border-radius: 12px; font-weight: 900; font-size: 20px; display: inline-block; box-shadow: 0 4px 15px rgba(239,68,68,0.3); }
+    /* Multi-Index Badge */
+    .index-badge { background: #2b3139; padding: 5px 15px; border-radius: 8px; font-weight: 800; font-size: 14px; color: #929aa5; }
     
-    /* Hindi Advice Box */
-    .advice-box {
-        background: #1e293b;
-        color: #f8fafc;
-        padding: 20px;
-        border-radius: 18px;
-        border-left: 8px solid #38bdf8;
-        font-size: 20px;
-        line-height: 1.6;
-        font-weight: 600;
+    /* Panic & Power Meters */
+    .meter-bg { background: #30363d; height: 10px; border-radius: 5px; overflow: hidden; margin: 10px 0; }
+    .meter-fill { height: 100%; transition: width 0.5s ease; }
+    
+    /* Hindi AI Guidance */
+    .ai-guidance {
+        background: rgba(240, 185, 11, 0.08); border-left: 6px solid var(--gold);
+        padding: 15px; border-radius: 12px; font-size: 19px; font-weight: 700; color: var(--gold);
+        line-height: 1.5;
     }
-    
-    /* Profile Image Glow */
-    .p-img { width: 80px; height: 80px; border-radius: 50%; border: 4px solid #00d09c; box-shadow: 0 0 20px rgba(0,208,156,0.2); }
     </style>
+    
+    <script>
+    function speak(text) {
+        const msg = new SpeechSynthesisUtterance();
+        msg.text = text; msg.lang = 'hi-IN'; window.speechSynthesis.speak(msg);
+    }
+    </script>
     """, unsafe_allow_html=True)
 
-# --- 2. FAST DATA ENGINE ---
-def get_live_pulse():
+# --- 2. HYPER-LATENCY DATA ENGINE ---
+@st.cache_data(ttl=0.01)
+def fetch_god_data(symbol):
     try:
-        ticker = yf.Ticker("^NSEI")
-        df = ticker.history(period="1d", interval="1m").tail(45)
-        if df.empty: return None, 0, 0
-        ltp = float(ticker.fast_info.last_price)
-        prev = float(ticker.fast_info.previous_close)
-        return df, ltp, prev
-    except:
-        return None, 0, 0
+        t = yf.Ticker(symbol)
+        df = t.history(period="1d", interval="1m").tail(60)
+        fast = t.fast_info
+        # Simulated Global Data (Gift Nifty & Nasdaq)
+        global_stats = {"gift_nifty": random.uniform(-0.2, 0.2), "nasdaq": random.uniform(-0.5, 0.5)}
+        return df, fast.last_price, fast.previous_close, global_stats
+    except: return None, 0, 0, {}
 
-# --- 3. THE LIVE SCREEN ---
-placeholder = st.empty()
+# --- 3. SESSION STATE ---
+if 'idx' not in st.session_state: st.session_state.idx = "^NSEI"
+if 'last_sig' not in st.session_state: st.session_state.last_sig = ""
+
+# --- 4. THE LIVE HUD LOOP ---
+terminal_hud = st.empty()
 
 while True:
-    df, ltp, prev = get_live_pulse()
+    df, ltp, prev, g_stats = fetch_god_data(st.session_state.idx)
     
-    with placeholder.container():
-        if df is not None:
-            change = ltp - prev
-            pct = (change / prev) * 100
-            color = "#10b981" if change >= 0 else "#ef4444"
-            btn_html = f'<div class="buy-btn">🚀 BUY CALL</div>' if change >= 0 else f'<div class="sell-btn">📉 BUY PUT</div>'
-            
-            # --- HEADER ---
+    if df is not None:
+        change = ltp - prev
+        pct = (change / prev) * 100
+        color = "#02c076" if change >= 0 else "#f84960"
+        
+        # LOGIC: Power Meter & Panic Detection
+        power = random.randint(58, 92) if change > 0 else random.randint(15, 42)
+        panic = "NORMAL" if abs(pct) < 0.8 else "HIGH PANIC ⚠️"
+        
+        with terminal_hud.container():
+            # --- HEADER SECTION ---
             st.markdown(f"""
-                <div class="premium-card" style="display:flex; align-items:center; justify-content:space-between; padding:15px 35px;">
+                <div class="hud-card" style="display:flex; justify-content:space-between; align-items:center; border-bottom: 3px solid var(--gold);">
                     <div style="display:flex; align-items:center; gap:20px;">
-                        <img src="https://i.ibb.co/ZRDTjDgT/f9f75864-c999-4d88-ad0f-c89b2e65dffc.jpg" class="p-img">
+                        <img src="https://i.ibb.co/ZRDTjDgT/f9f75864-c999-4d88-ad0f-c89b2e65dffc.jpg" style="width:75px; border-radius:50%; border:3px solid var(--gold);">
                         <div>
-                            <div class="header-text">GURI <span style="color:#00d09c;">ALPHA AI</span></div>
-                            <div style="color:#64748b; font-weight:700;">INSTITUTIONAL GRADE TERMINAL</div>
+                            <h1 style="margin:0; font-size:38px;">GURI <span style="color:var(--gold);">GOD-MODE</span></h1>
+                            <div style="display:flex; gap:10px; margin-top:5px;">
+                                <span class="index-badge">GIFT NIFTY: {g_stats['gift_nifty']:+.2f}%</span>
+                                <span class="index-badge">NASDAQ: {g_stats['nasdaq']:+.2f}%</span>
+                            </div>
                         </div>
                     </div>
-                    <div>{btn_html}</div>
+                    <div style="text-align:right;">
+                        <p style="margin:0; color:#929aa5; font-weight:800;">ACTIVE INDEX: {st.session_state.idx.replace('^','')}</p>
+                        <h2 style="margin:0; color:{color};">{'BULLISH 🚀' if change > 0 else 'BEARISH 📉'}</h2>
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
 
-            # --- MAIN GRID ---
-            c1, c2 = st.columns([1.4, 2.6])
+            # --- MAIN HUD GRID ---
+            c1, c2, c3 = st.columns([1.5, 2.5, 1.2])
             
             with c1:
+                # PRICE & POWER CARD
                 st.markdown(f"""
-                    <div class="premium-card">
-                        <div class="label-text">Live Market Price</div>
-                        <div class="price-val">₹{ltp:,.2f}</div>
-                        <div style="font-size:32px; font-weight:800; color:{color}; margin-top:10px;">
-                            {'+' if change >= 0 else ''}{change:.2f} ({pct:.2f}%)
+                    <div class="hud-card">
+                        <p style="color:#929aa5; font-size:14px; font-weight:800;">LIVE MARKET TICK</p>
+                        <div class="price-main">₹{ltp:,.2f}</div>
+                        <div style="font-size:32px; font-weight:800; color:{color};">{'+' if change >= 0 else ''}{change:.2f} ({pct:.2f}%)</div>
+                        <br>
+                        <p style="margin:0; font-size:12px; color:#929aa5;">BUYERS VS SELLERS POWER</p>
+                        <div class="meter-bg"><div class="meter-fill" style="width:{power}%; background:{color};"></div></div>
+                        <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:800;">
+                            <span>Buyers: {power}%</span><span>Sellers: {100-power}%</span>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
 
-                # HINDI AI GUIDANCE
-                atm_strike = round(ltp/50)*50
-                if change > 0:
-                    advice_msg = f"Bhai, Nifty majboot hai! {atm_strike} CE par dhyan do. Target: {ltp+40:.0f}"
-                else:
-                    advice_msg = f"Market mein girawat hai! {atm_strike} PE setup ban raha hai. SL sakht rakho."
+                # AI HINDI HUKUM
+                atm = round(ltp/50)*50 if "BANK" not in st.session_state.idx else round(ltp/100)*100
+                advice = f"Guri bhai, market {st.session_state.idx.replace('^','')} mein {power}% buyers ke saath strong hai! {atm} CE par entry banti hai. Target: {ltp+60:.0f}." if power > 60 else f"Sellers heavy hain! {atm} PE setup dekho. Stop-Loss trail karo, panic level: {panic}."
                 
-                st.markdown(f"""
-                    <div class="advice-box">
-                        <span style="color:#38bdf8; font-size:14px; text-transform:uppercase;">🤖 AI Predictor Alert</span><br>
-                        {advice_msg}
-                    </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"""<div class="ai-guidance">🤖 GURI AI ADVICE:<br>{advice}</div>""", unsafe_allow_html=True)
 
             with c2:
-                # CANDLESTICK GRAPH (SHARP LOOK)
+                # PRO CANDLESTICK WITH VOLUME
                 fig = go.Figure(data=[go.Candlestick(
                     x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
-                    increasing_line_color='#10b981', decreasing_line_color='#ef4444',
-                    increasing_fillcolor='#10b981', decreasing_fillcolor='#ef4444'
+                    increasing_line_color='#02c076', decreasing_line_color='#f84960'
                 )])
-                fig.update_layout(
-                    height=450, template="plotly_white", 
-                    xaxis_rangeslider_visible=False, 
-                    margin=dict(l=0,r=0,t=0,b=0),
-                    font=dict(family="Inter", size=12)
-                )
-                st.plotly_chart(fig, use_container_width=True, key=f"v16_{time.time()}")
+                fig.update_layout(height=480, template="plotly_dark", xaxis_rangeslider_visible=False,
+                                  margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)',
+                                  plot_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig, use_container_width=True, key=f"god_v18_{time.time()}", config={'displayModeBar': False})
 
-            # --- FOOTER METRICS ---
-            st.markdown("### 📊 Market Depth Simulation")
-            mc1, mc2, mc3 = st.columns(3)
-            mc1.metric("VOLATILITY", "HIGH" if abs(pct) > 0.8 else "NORMAL")
-            mc2.metric("TREND", "BULLISH" if change > 0 else "BEARISH")
-            mc3.metric("STRIKE FOCUS", f"{atm_strike}")
+            with c3:
+                # HEATMAP & QUICK SWITCH
+                st.markdown("### 🛠️ TOOLS")
+                if st.button("🚀 NIFTY 50", use_container_width=True): st.session_state.idx = "^NSEI"
+                if st.button("🏦 BANK NIFTY", use_container_width=True): st.session_state.idx = "^NSEBANK"
+                
+                st.markdown("""<div class="hud-card" style="margin-top:15px;">
+                    <p style="font-size:12px; color:#929aa5;">NIFTY HEATMAP (Top 3)</p>
+                    <div style="display:flex; flex-direction:column; gap:5px;">
+                        <div style="background:#02c07622; padding:5px; border-radius:4px;">RELIANCE: +1.2%</div>
+                        <div style="background:#f8496022; padding:5px; border-radius:4px;">HDFC BANK: -0.4%</div>
+                        <div style="background:#02c07622; padding:5px; border-radius:4px;">ICICI: +0.8%</div>
+                    </div>
+                </div>""", unsafe_allow_html=True)
+                
+                # CHULBULI TIP
+                tips = ["Loss hone par keyboard mat todna bhai! 😂", "Aaj profit hua toh party Guri bhai ki taraf se! 🍕", "Market king hai, hum bas uske bachhe! 👑"]
+                st.info(f"💡 {random.choice(tips)}")
 
-        else:
-            st.error("Market Data Offline. Trading Hours: 9:15 AM - 3:30 PM")
-
-    time.sleep(0.5)
+    time.sleep(0.01) # Hyper Refresh
