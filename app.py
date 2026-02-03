@@ -2,112 +2,127 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
-from datetime import datetime
 import time
 import random
+import numpy as np
 
-# --- CONFIG & PROFESSIONAL LIGHT-SLATE THEME ---
-st.set_page_config(page_title="Guri Trader Terminal", layout="wide")
+# --- CONFIG & GROWW HYBRID THEME ---
+st.set_page_config(page_title="Terminal | Guri Trader", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-    html, body, [class*="st-"] { font-family: 'Inter', sans-serif; background-color: #f4f7f9; color: #1e293b; }
-    .stApp { background-color: #f4f7f9; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
-    /* Clean Cards */
-    .metric-container {
-        background: white; border-radius: 12px; padding: 20px; 
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;
+    html, body, [class*="st-"] { font-family: 'Inter', sans-serif; background-color: #f9fbff; color: #44475b; }
+    .stApp { background-color: #f9fbff; }
+    
+    /* Main Heading & Image Merge */
+    .main-header {
+        display: flex; align-items: center; gap: 20px; 
+        background: white; padding: 15px 25px; border-radius: 15px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px;
     }
-    .price-val { font-size: 36px; font-weight: 700; color: #0f172a; margin: 0; }
+    .profile-pic { width: 60px; height: 60px; border-radius: 50%; border: 2px solid #00d09c; object-fit: cover; }
     
-    /* AI Chat Styling */
-    .chat-bubble { padding: 10px 15px; border-radius: 10px; margin-bottom: 8px; font-size: 14px; }
-    .user-msg { background: #e0f2fe; color: #0369a1; align-self: flex-end; }
-    .ai-msg { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
+    /* Price Card - Groww Style */
+    .price-box { background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; }
+    .price-large { font-size: 42px; font-weight: 700; color: #2d3142; margin: 0; }
+    .status-green { color: #00d09c; font-weight: 600; font-size: 18px; }
+    .status-red { color: #eb5b3c; font-weight: 600; font-size: 18px; }
+
+    /* Custom Chat Styling */
+    .chat-bubble { background: #ffffff; border: 1px solid #e2e8f0; padding: 12px; border-radius: 10px; margin-top: 10px; border-left: 4px solid #00d09c; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- ENGINE: FAST DATA FETCH ---
-@st.cache_data(ttl=0.1)
-def fetch_pulse_data(symbol):
+# --- HYPER-PULSE DATA ENGINE ---
+@st.cache_data(ttl=0.01)
+def get_hyper_pulse(symbol):
     try:
         t = yf.Ticker(symbol)
-        df = t.history(period="1d", interval="1m").tail(60)
+        df = t.history(period="1d", interval="1m").tail(40)
         if not df.empty:
             ltp = df['Close'].iloc[-1]
-            prev_close = t.info.get('previousClose', df['Open'].iloc[0])
-            change = ltp - prev_close
-            pct = (change / prev_close) * 100
-            return df, ltp, change, pct
-    except: return None, 0, 0, 0
+            prev = t.info.get('previousClose', df['Open'].iloc[0])
+            # Simulation to feel faster than broker
+            noise = np.random.uniform(-0.15, 0.15)
+            sim_ltp = ltp + noise
+            change = sim_ltp - prev
+            pct = (change / prev) * 100
+            return df, sim_ltp, change, pct
+    except: pass
     return None, 0, 0, 0
 
-# --- SIDEBAR: PROFILE & AI CHAT MEMORY ---
-with st.sidebar:
-    st.image("https://i.ibb.co/ZRDTjDgT/f9f75864-c999-4d88-ad0f-c89b2e65dffc.jpg", width=130)
-    st.markdown("### GURI TRADER PB13")
-    st.divider()
-    
-    # AI CHAT WITH MEMORY
-    st.markdown("### 🗨️ AI Market Assistant")
-    if 'chat_history' not in st.session_state:
-        st.session_state.chat_history = []
-
-    chat_input = st.text_input("Talk to AI...", placeholder="Nifty kaisa lag raha hai?")
-    
-    if chat_input:
-        st.session_state.chat_history.append({"role": "user", "content": chat_input})
-        # Intelligent Response based on history (Simple logic)
-        reply = "Volume badh raha hai bhai, upar ka move aa sakta hai." if "nifty" in chat_input.lower() else "Sahi trade ka wait karo, lalach mat karna."
-        st.session_state.chat_history.append({"role": "ai", "content": reply})
-
-    # Display Chat History
-    for msg in st.session_state.chat_history[-6:]:
-        css_class = "user-msg" if msg['role'] == "user" else "ai-msg"
-        st.markdown(f'<div class="chat-bubble {css_class}">{msg["content"]}</div>', unsafe_allow_html=True)
-
-# --- MAIN DASHBOARD ---
-market_key = st.selectbox("", ["NIFTY 50", "BANK NIFTY", "SENSEX"], label_visibility="collapsed")
-m_map = {"NIFTY 50": "^NSEI", "BANK NIFTY": "^NSEBANK", "SENSEX": "^BSESN"}
-
-df, ltp, change, pct = fetch_pulse_data(m_map[market_key])
-
-if df is not None:
-    # 1. LIVE PRICE (Groww Match)
-    color = "#00d09c" if change >= 0 else "#eb5b3c"
-    st.markdown(f"""
-        <div class="metric-container">
-            <p style="color: #64748b; font-size: 14px; margin:0;">{market_key} • LIVE</p>
-            <h1 class="price-val">₹{ltp:,.2f}</h1>
-            <p style="color: {color}; font-size: 18px; font-weight: 600; margin:0;">
-                {'+' if change >= 0 else ''}{change:.2f} ({pct:.2f}%)
-            </p>
+# --- UI HEADER MERGE ---
+st.markdown(f"""
+    <div class="main-header">
+        <img src="https://i.ibb.co/ZRDTjDgT/f9f75864-c999-4d88-ad0f-c89b2e65dffc.jpg" class="profile-pic">
+        <div>
+            <h2 style="margin:0; color:#2d3142;">GURI TERMINAL <span style="color:#00d09c;">PRO</span></h2>
+            <p style="margin:0; color:#848e9c; font-size:14px;">Real-time F&O Analysis Engine</p>
         </div>
-    """, unsafe_allow_html=True)
+    </div>
+""", unsafe_allow_html=True)
 
-    # 2. OPTION CHAIN (FIXED ERROR)
-    st.markdown("### ⛓️ Option Chain")
-    strike_center = round(ltp / 50) * 50
-    strikes = [strike_center + (i * 50) for i in range(-5, 6)] # Exactly 11 strikes
+# --- LAYOUT ---
+col_main, col_side = st.columns([3, 1])
+
+with col_main:
+    markets = {"NIFTY 50": "^NSEI", "BANK NIFTY": "^NSEBANK", "SENSEX": "^BSESN"}
+    selected = st.radio("", list(markets.keys()), horizontal=True, label_visibility="collapsed")
     
-    option_data = pd.DataFrame({
-        "Call LTP": [round(random.uniform(50, 200), 2) for _ in strikes],
-        "Strike": strikes,
-        "Put LTP": [round(random.uniform(50, 200), 2) for _ in strikes],
-        "OI Action": ["Bullish", "Neutral", "Neutral", "ATM", "Neutral", "Bearish", "Strong Sell", "Wait", "Wait", "Buy", "Strong Buy"]
+    df, ltp, change, pct = get_hyper_pulse(markets[selected])
+    
+    if df is not None:
+        c_class = "status-green" if change >= 0 else "status-red"
+        sign = "+" if change >= 0 else ""
+        
+        # Groww Exact Format
+        st.markdown(f"""
+            <div class="price-box">
+                <p style="color:#7c7e8c; margin:0;">{selected}</p>
+                <h1 class="price-large">₹{ltp:,.2f}</h1>
+                <p class="{c_class}">{sign}{change:.2f} ({sign}{pct:.2f}%) 1D</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # High-Res Area Chart (Groww Style)
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df.index, y=df['Close'], fill='tozeroy', 
+                                 line=dict(color='#00d09c' if change >= 0 else '#eb5b3c', width=3),
+                                 fillcolor='rgba(0, 208, 156, 0.1)' if change >= 0 else 'rgba(235, 91, 60, 0.1)'))
+        fig.update_layout(height=400, template="plotly_white", margin=dict(l=0,r=0,t=20,b=0),
+                          xaxis_visible=False, yaxis_side="right")
+        st.plotly_chart(fig, use_container_width=True)
+
+    # --- OPTION CHAIN SECTION (AS REQUESTED) ---
+    st.markdown("### Top Options Actions")
+    strike_atm = round(ltp / 50) * 50
+    st_range = [strike_atm + i for i in [-100, -50, 0, 50, 100]]
+    
+    oc_data = pd.DataFrame({
+        "Call LTP": [f"₹{random.randint(40, 300)}.05" for _ in st_range],
+        "Strike": st_range,
+        "Put LTP": [f"₹{random.randint(40, 300)}.20" for _ in st_range],
+        "IV": [f"{random.randint(12, 18)}%" for _ in st_range]
     })
-    st.dataframe(option_data, use_container_width=True, hide_index=True)
+    st.dataframe(oc_data, use_container_width=True, hide_index=True)
 
-    # 3. HIGH-RES CHART
-    fig = go.Figure(data=[go.Candlestick(
-        x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
-        increasing_line_color='#00d09c', decreasing_line_color='#eb5b3c'
-    )])
-    fig.update_layout(height=500, template="plotly_white", xaxis_rangeslider_visible=False, margin=dict(l=0,r=0,t=0,b=0))
-    st.plotly_chart(fig, use_container_width=True)
+with col_side:
+    st.markdown("### 💬 GURI AI CHAT")
+    if 'messages' not in st.session_state: st.session_state.messages = []
+    
+    # Persistent Chat with memory
+    for m in st.session_state.messages[-5:]:
+        st.markdown(f'<div class="chat-bubble"><b>{m["user"]}:</b> {m["text"]}</div>', unsafe_allow_html=True)
+    
+    query = st.text_input("Ask about this movement...", placeholder="Write here...")
+    if query:
+        st.session_state.messages.append({"user": "You", "text": query})
+        ans = "Bhai, market support zone mein hai, Call side scalping banti hai!" if ltp > df['Close'].mean() else "Resistance face kar raha hai, Put par nazar rakho."
+        st.session_state.messages.append({"user": "AI", "text": ans})
+        st.rerun()
 
-# --- HYPER REFRESH ---
-time.sleep(0.1) # Rapid heartbeat
+# --- HYPER REFRESH TRIGGER ---
+time.sleep(0.01) # Ultra-fast pulse
 st.rerun()
