@@ -5,115 +5,78 @@ import plotly.graph_objects as go
 import time
 import random
 
-# --- PRO THEME CONFIG ---
+# --- PRO THEME & DESIGN ---
 st.set_page_config(page_title="Guri AI Terminal", layout="wide")
 
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap');
-    html, body, [class*="st-"] { font-family: 'Sora', sans-serif; background-color: #f8fafc; }
+    html, body, [class*="st-"] { font-family: 'Sora', sans-serif; background-color: #fcfdfe; }
     
-    /* Signal Cards */
-    .sig-card {
-        padding: 20px; border-radius: 12px; margin-bottom: 15px; text-align: center;
-        border: 2px solid transparent; transition: 0.3s;
-    }
-    .call-bg { background: #ecfdf5; border-color: #10b981; color: #065f46; }
-    .put-bg { background: #fef2f2; border-color: #ef4444; color: #991b1b; }
-    .wait-bg { background: #f1f5f9; border-color: #94a3b8; color: #475569; }
+    /* Premium Header */
+    .main-header { display: flex; align-items: center; gap: 15px; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .profile-img { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #00d09c; }
 
-    /* Buttons */
-    .action-btn { font-weight: 700; border-radius: 8px; padding: 10px 20px; }
-    
-    /* Price Header */
-    .live-price { font-size: 38px; font-weight: 800; color: #1e293b; margin: 0; }
+    /* Signal Cards */
+    .sig-card { padding: 20px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 2px solid #e2e8f0; }
+    .call-btn { background: #00d09c; color: white; border-radius: 8px; padding: 10px; font-weight: bold; }
+    .put-btn { background: #eb5b3c; color: white; border-radius: 8px; padding: 10px; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- ENGINE: NO-DELAY DATA ---
+# --- ROBUST DATA ENGINE ---
 @st.cache_data(ttl=0.1)
-def get_clean_data(symbol):
+def get_safe_data(symbol):
     try:
         t = yf.Ticker(symbol)
-        df = t.history(period="1d", interval="1m").tail(30) # Chhota graph window
+        df = t.history(period="1d", interval="1m").tail(30)
         if not df.empty:
             ltp = df['Close'].iloc[-1]
             prev = t.info.get('previousClose', df['Open'].iloc[0])
-            return df, ltp, ltp - prev, ((ltp - prev) / prev) * 100
-    except: pass
-    return None, 0, 0, 0
+            return df, float(ltp), float(ltp - prev), float(((ltp - prev) / prev) * 100)
+    except Exception:
+        pass
+    return None, 0.0, 0.0, 0.0
 
-# --- MAIN LAYOUT ---
-col_sig, col_chart = st.columns([1, 2.5])
+# --- HEADER SECTION ---
+st.markdown(f"""
+    <div class="main-header">
+        <img src="https://i.ibb.co/ZRDTjDgT/f9f75864-c999-4d88-ad0f-c89b2e65dffc.jpg" class="profile-img">
+        <div><h2 style="margin:0;">GURI TERMINAL <span style="color:#00d09c;">AI</span></h2></div>
+    </div>
+""", unsafe_allow_html=True)
 
-# Fetch Data
-m_map = {"NIFTY 50": "^NSEI", "BANK NIFTY": "^NSEBANK"}
-selected = st.sidebar.selectbox("Select Index", list(m_map.keys()))
-df, ltp, change, pct = get_clean_data(m_map[selected])
-
-with col_sig:
-    st.image("https://i.ibb.co/ZRDTjDgT/f9f75864-c999-4d88-ad0f-c89b2e65dffc.jpg", width=80)
-    st.markdown("### AI Scalper Sign")
+# --- SIDEBAR & CHAT MEMORY ---
+with st.sidebar:
+    st.markdown("### 🗨️ AI Chat Support")
+    if 'chat_mem' not in st.session_state: st.session_state.chat_mem = []
     
-    # AI STRATEGY LOGIC (Entry/Exit)
-    rsi = 55 # Simulated RSI
-    trend = "BUY CALL" if ltp > df['Close'].mean() and rsi < 70 else "BUY PUT" if ltp < df['Close'].mean() and rsi > 30 else "WAIT"
+    user_q = st.text_input("Ask Market...", placeholder="Nifty view?")
+    if user_q:
+        st.session_state.chat_mem.append(f"👤: {user_q}")
+        st.session_state.chat_mem.append(f"🤖: Analysis checking... Resistance at 25950. Trade safe!")
     
-    if trend == "BUY CALL":
-        st.markdown(f"""<div class="sig-card call-bg">
-            <h2>🚀 CALL ENTRY</h2>
-            <p>ENTRY: {ltp:.2f}<br><b>TARGET: {ltp+35:.2f}</b><br>SL: {ltp-15:.2f}</p>
-        </div>""", unsafe_allow_html=True)
-    elif trend == "BUY PUT":
-        st.markdown(f"""<div class="sig-card put-bg">
-            <h2>📉 PUT ENTRY</h2>
-            <p>ENTRY: {ltp:.2f}<br><b>TARGET: {ltp-35:.2f}</b><br>SL: {ltp+15:.2f}</p>
-        </div>""", unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="sig-card wait-bg"><h2>⌛ WAIT</h2><p>Market Sideways</p></div>', unsafe_allow_html=True)
+    for m in st.session_state.chat_mem[-4:]: st.write(m)
+    st.divider()
 
-    # EXIT ANALYSIS
-    st.info(f"**AI Exit Tip:** {'Hold position with trailing SL' if abs(pct) > 1 else 'Book small profits & Exit'}")
+# --- MAIN ENGINE ---
+m_list = {"NIFTY 50": "^NSEI", "BANK NIFTY": "^NSEBANK"}
+selected = st.selectbox("", list(m_list.keys()), label_visibility="collapsed")
+df, ltp, change, pct = get_safe_data(m_list[selected])
 
-with col_chart:
-    # Top Live Info
-    c_color = "#10b981" if change >= 0 else "#ef4444"
-    st.markdown(f"""
-        <div>
-            <p style="margin:0; color:#64748b;">{selected} Live</p>
-            <h1 class="live-price">₹{ltp:,.2f}</h1>
-            <p style="color:{c_color}; font-weight:700;">{'+' if change>=0 else ''}{change:.2f} ({pct:.2f}%)</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # SMALL PROFESSIONAL CHART
-    fig = go.Figure()
-    fig.add_trace(go.Candlestick(x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
-                                 increasing_line_color='#10b981', decreasing_line_color='#ef4444', name="Price"))
-    # Entry line indicator
-    fig.add_hline(y=ltp, line_dash="dot", line_color="#94a3b8", annotation_text="Current Entry")
-    
-    fig.update_layout(height=350, template="plotly_white", margin=dict(l=0,r=0,t=0,b=0), xaxis_rangeslider_visible=False)
-    st.plotly_chart(fig, use_container_width=True)
+col_signals, col_chart = st.columns([1, 2.5])
 
-# --- CHAT & OPTION CHAIN (Bottom Strip) ---
-st.divider()
-c_chat, c_opt = st.columns([1, 2])
-
-with c_chat:
-    st.markdown("#### 💬 Guri AI Chat")
-    q = st.text_input("Ask Market Move...", key="main_chat")
-    if q: st.write(f"🤖: {selected} is showing {'strength' if change > 0 else 'weakness'} at {ltp:.0f}. Follow the signal.")
-
-with c_opt:
-    st.markdown("#### ⛓️ Quick Option Chain")
-    atm = round(ltp/50)*50
-    oc = pd.DataFrame({
-        "CALL (CE)": [random.randint(80, 150) for _ in range(3)],
-        "STRIKE": [atm-50, atm, atm+50],
-        "PUT (PE)": [random.randint(80, 150) for _ in range(3)]
-    })
-    st.table(oc)
-
-time.sleep(0.5)
-st.rerun()
+if df is not None and ltp > 0:
+    with col_signals:
+        # FIXED ERROR LOGIC: Using float check to prevent TypeError
+        mean_price = df['Close'].mean()
+        rsi_sim = 52 # Logic for future RSI
+        
+        if ltp > mean_price:
+            st.markdown('<div class="sig-card" style="border-color:#00d09c;">'
+                        '<h3 style="color:#00d09c;">🚀 BUY CALL</h3>'
+                        f'<p>Entry: {ltp:.2f}<br>TGT: {ltp+40:.2f}<br>SL: {ltp-20:.2f}</p></div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="sig-card" style="border-color:#eb5b3c;">'
+                        '<h3 style="color:#eb5b3c;">📉 BUY PUT</h3>'
+                        f'<p>Entry: {ltp:.2f}<br>TGT: {lt
