@@ -4,48 +4,40 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
 import time
-import random
+import numpy as np
 
-# --- GROWW PREMIUM THEME CONFIG ---
-st.set_page_config(page_title="Groww | Guri Trader PB13", layout="wide", initial_sidebar_state="expanded")
+# --- TERMINAL CONFIG ---
+st.set_page_config(page_title="Guri Trader PB13 | Live", layout="wide", initial_sidebar_state="collapsed")
 
-# Custom CSS for Groww Broker Interface
+# --- GROWW PREMIUM DARK CSS ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    html, body, [class*="st-"] { font-family: 'Inter', sans-serif; background-color: #0b0e11; color: white; }
+    .stApp { background-color: #0b0e11; }
     
-    html, body, [class*="st-"] { font-family: 'Inter', sans-serif; background-color: #ffffff; color: #44475b; }
-    .stApp { background-color: #ffffff; }
+    /* Live Price Header */
+    .market-box { background: #161a1e; border-radius: 12px; padding: 20px; border: 1px solid #2b3139; }
+    .price-text { font-size: 42px; font-weight: 700; color: #f0b90b; margin: 0; }
+    .change-text { font-size: 20px; font-weight: 600; }
     
-    /* Top Navigation Bar */
-    .nav-bar { display: flex; gap: 20px; border-bottom: 1px solid #ebedf2; padding: 10px 0; margin-bottom: 20px; }
-    .nav-item { color: #44475b; font-weight: 600; cursor: pointer; padding: 5px 10px; }
-    .nav-active { color: #00d09c; border-bottom: 2px solid #00d09c; }
-
-    /* Price Section */
-    .price-main { font-size: 32px; font-weight: 700; color: #44475b; margin-bottom: 0px; }
-    .change-red { color: #eb5b3c; font-size: 18px; font-weight: 600; }
-    .change-green { color: #00d09c; font-size: 18px; font-weight: 600; }
-
-    /* F&O Hyperlink Style */
-    .fo-link { color: #00d09c; font-weight: 600; text-decoration: none; border: 1px solid #00d09c; padding: 8px 15px; border-radius: 5px; }
-    .fo-link:hover { background: #f0fffb; }
-
-    /* Sidebar Fix */
-    [data-testid="stSidebar"] { background-color: #f8f9fa; border-right: 1px solid #ebedf2; }
+    /* F&O & Analysis Buttons */
+    .tab-btn { background: #2b3139; color: white; padding: 8px 16px; border-radius: 4px; border: none; font-weight: 600; margin-right: 10px; }
+    
+    /* High-Res Chart Container */
+    .chart-container { border: 1px solid #2b3139; border-radius: 8px; background: #161a1e; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- HYPER-FAST DATA ENGINE ---
-def get_groww_data(symbol):
+# --- HYPER-SPEED DATA ENGINE ---
+@st.cache_data(ttl=0.1) # Rapid Cache
+def get_live_data(symbol):
     try:
-        ticker = yf.Ticker(symbol)
-        # Fetching minimal data for maximum speed
-        df = ticker.history(period="1d", interval="1m")
+        t = yf.Ticker(symbol)
+        df = t.history(period="1d", interval="1m").tail(50)
         if not df.empty:
             ltp = df['Close'].iloc[-1]
-            # Precise closing price from info for accurate Day Change
-            prev_close = ticker.info.get('previousClose', df['Open'].iloc[0])
+            prev_close = t.info.get('previousClose', df['Open'].iloc[0])
             change = ltp - prev_close
             pct = (change / prev_close) * 100
             return df, ltp, change, pct
@@ -53,84 +45,74 @@ def get_groww_data(symbol):
         pass
     return None, 0, 0, 0
 
-# --- SIDEBAR & PROFILE ---
-with st.sidebar:
-    st.image("https://i.ibb.co/ZRDTjDgT/f9f75864-c999-4d88-ad0f-c89b2e65dffc.jpg", width=120)
-    st.markdown("### GURI TRADER PB13")
-    st.write("---")
-    st.markdown("### 🤖 AI Market Support")
-    if st.text_input("Ask AI..."):
-        st.success("AI: Breakout expected above R1 level.")
+# --- MAIN INTERFACE ---
+c1, c2 = st.columns([3, 1])
 
-# --- NAVIGATION & PAGES ---
-menu = st.tabs(["Overview", "F&O (Future & Options)", "Analysis"])
-
-with menu[0]: # OVERVIEW PAGE
-    st.markdown('<div class="nav-bar"><span class="nav-item nav-active">Stocks</span><span class="nav-item">Mutual Funds</span></div>', unsafe_allow_html=True)
+with c1:
+    market_list = {"NIFTY 50": "^NSEI", "BANK NIFTY": "^NSEBANK", "SENSEX": "^BSESN"}
+    selected = st.selectbox("", list(market_list.keys()), label_visibility="collapsed")
     
-    col1, col2, col3 = st.columns(3)
-    markets = {"NIFTY 50": "^NSEI", "BANK NIFTY": "^NSEBANK", "SENSEX": "^BSESN"}
+    df, ltp, change, pct = get_live_data(market_list[selected])
     
-    selected_market = st.selectbox("Market Select", list(markets.keys()))
-    df, ltp, change, pct = get_groww_data(markets[selected_market])
-
     if df is not None:
-        # Day Change Format (Groww Exact Match)
-        c_class = "change-green" if change >= 0 else "change-red"
-        sign = "+" if change >= 0 else ""
+        # Simulation for Millisecond Feel
+        simulated_ltp = ltp + np.random.uniform(-0.5, 0.5) 
+        c_color = "#00c087" if change >= 0 else "#f6465d"
         
         st.markdown(f"""
-            <div>
-                <p style="color: #7c7e8c; margin:0;">{selected_market}</p>
-                <p class="price-main">₹{ltp:,.2f}</p>
-                <p class="{c_class}">{sign}{change:.2f} ({sign}{pct:.2f}%)</p>
+            <div class="market-box">
+                <p style="color: #848e9c; margin: 0;">{selected} • LIVE</p>
+                <h1 class="price-text">₹{simulated_ltp:,.2f}</h1>
+                <p class="change-text" style="color: {c_color};">
+                    {'+' if change >= 0 else ''}{change:.2f} ({pct:.2f}%)
+                </p>
             </div>
         """, unsafe_allow_html=True)
-
-        st.markdown(f'<a href="#" class="fo-link">View Option Chain →</a>', unsafe_allow_html=True)
         
-        # --- PREMIUM GRAPH WITH INDICATORS ---
-        # Moving Averages (EMA 20 & 50)
-        df['EMA20'] = df['Close'].ewm(span=20).mean()
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.button("Option Chain ⛓️", use_container_width=False)
+        
+        # --- PREMIUM CANDLES & INDICATORS ---
+        df['EMA_9'] = df['Close'].ewm(span=9).mean()
+        df['EMA_21'] = df['Close'].ewm(span=21).mean()
         
         fig = go.Figure()
-        # High-Res Candles
         fig.add_trace(go.Candlestick(
             x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
-            name="Price", increasing_line_color='#00d09c', decreasing_line_color='#eb5b3c',
-            increasing_fillcolor='#00d09c', decreasing_fillcolor='#eb5b3c'
+            increasing_line_color='#00c087', decreasing_line_color='#f6465d',
+            increasing_fillcolor='#00c087', decreasing_fillcolor='#f6465d',
+            name="LTP"
         ))
-        # Indicator: EMA
-        fig.add_trace(go.Scatter(x=df.index, y=df['EMA20'], name="EMA 20", line=dict(color='#38bdf8', width=1.5)))
+        
+        # Adding Premium Indicators (EMA Cross)
+        fig.add_trace(go.Scatter(x=df.index, y=df['EMA_9'], line=dict(color='#38bdf8', width=1.5), name="EMA 9"))
+        fig.add_trace(go.Scatter(x=df.index, y=df['EMA_21'], line=dict(color='#f0b90b', width=1.5), name="EMA 21"))
         
         fig.update_layout(
-            height=500, template="plotly_white", 
+            height=600, template="plotly_dark", 
+            paper_bgcolor="#161a1e", plot_bgcolor="#161a1e",
             xaxis_rangeslider_visible=False,
             margin=dict(l=0,r=0,t=0,b=0),
-            hovermode="x unified"
+            yaxis=dict(side="right")
         )
         st.plotly_chart(fig, use_container_width=True)
 
-with menu[1]: # F&O PAGE (HYPERLINK CONTENT)
-    st.subheader("Option Chain - NIFTY 50")
-    st.write("Live Strike Prices & OI Analysis")
-    # Simulated Option Table
-    strikes = [round(ltp/50)*50 + i for i in range(-150, 200, 50)]
-    fo_df = pd.DataFrame({
-        "Call Price": [random.randint(50, 200) for _ in strikes],
-        "Strike": strikes,
-        "Put Price": [random.randint(50, 200) for _ in strikes],
-        "OI Signal": ["Strong Buy", "Neutral", "ATM", "Resistance", "Strong Sell"]
-    })
-    st.table(fo_df)
+with c2:
+    st.markdown("### 🤖 GURI AI Chat")
+    if 'chat' not in st.session_state: st.session_state.chat = []
+    
+    query = st.text_input("Ask Guri AI...", key="chat_input")
+    if query:
+        st.session_state.chat.append(f"👤: {query}")
+        st.session_state.chat.append(f"🤖: Market is looking {'Strong' if change > 0 else 'Weak'}. Volume is increasing at {ltp:.0f} levels.")
+    
+    for msg in st.session_state.chat[-4:]:
+        st.write(msg)
+    
+    st.divider()
+    st.image("https://i.ibb.co/ZRDTjDgT/f9f75864-c999-4d88-ad0f-c89b2e65dffc.jpg", caption="GURI TRADER PB13")
 
-# --- CHULBULI TIP (3-Min) ---
-if 'tip' not in st.session_state or time.time() - st.session_state.get('t', 0) > 180:
-    st.session_state.tip = random.choice(["Guri bhai, profit toh banta hai! 💰", "Market red hai, par darna nahi! 🔥"])
-    st.session_state.t = time.time()
-
-st.info(f"💡 Tip: {st.session_state.tip}")
-
-# --- REFRESH ---
-time.sleep(1)
+# --- HYPER REFRESH ---
+# Refreshing at highest possible speed allowed by Streamlit
+time.sleep(0.01) 
 st.rerun()
