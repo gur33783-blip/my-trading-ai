@@ -104,4 +104,24 @@ def locked_terminal(idx_name, timeframe):
                     <p style="color:#888; font-size:12px;">OI TREND</p>
                     <b style="color:#38bdf8;">{data['oi_trend']}</b>
                     <hr style="border-color:#333;">
-                    <p style="color:#888; font-size:
+                    <p style="color:#888; font-size:12px;">SCALPER ADVICE</p>
+                    <b style="color:#00d09c;">Entry:</b> Active Opportunity<br>
+                    <b style="color:#eb5b5d;">Hold:</b> 2-4 Mins Max<br>
+                    <b style="color:#f0b90b;">Target:</b> Quick 10-15 Points
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # FUTURE PROJECTION
+            st.markdown("### 🔮 PROJECTION")
+            proj_color = "#00d09c" if data['oi_trend'] == "STRONG BULLISH" else "#eb5b5d"
+            st.markdown(f"""
+                <div style="padding:15px; background:#111; border-radius:10px; border-left:4px solid {proj_color};">
+                    Trend Projection: <b>{data['oi_trend']}</b><br>
+                    Next Spike: <b>Within 5-10 Mins</b><br>
+                    <span style="font-size:11px; color:#666;">*Based on Volume + Gamma Velocity</span>
+                </div>
+            """, unsafe_allow_html=True)
+
+# Select Market
+target = st.selectbox("MARKET", ["NIFTY", "BANKNIFTY"], label_visibility="collapsed")
+locked_terminal(target, tf)
